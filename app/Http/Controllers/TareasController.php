@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TareaResource;
 use App\Models\Categoria;
 use App\Models\Tarea;
 use Illuminate\Http\Request;
@@ -15,16 +16,7 @@ class TareasController extends Controller
      */
     public function index()
     {
-        $tareas = Tarea::with('categorias')->get();
-
-        foreach($tareas as $tarea) {
-            $categorias = $tarea['categorias'];
-            foreach ($categorias as $categoria) {
-                $categoria['nombre'] = mb_strtolower($categoria['nombre']);
-            }
-        }
-
-        return response()->json($tareas);
+        return TareaResource::collection(Tarea::with('categorias')->get());
     }
 
     /**
@@ -42,12 +34,10 @@ class TareasController extends Controller
 
         $categorias = [];
         if ($request->has('categorias')) {
-            $categorias = $request->categorias;
+            $categorias = array_unique($request->categorias);
             $validarCategorias = $this->validarCategorias($categorias);
-            if (!$validarCategorias['res']) {
-                return response()->json([
-                    'message' => $validarCategorias['message']
-                ], 422);
+            if (!$validarCategorias['ok']) {
+                return response()->json(['res' => $validarCategorias['mensaje']], 422);
             }
         }
 
@@ -60,23 +50,23 @@ class TareasController extends Controller
         }
 
         return response()->json([
-            'message' => 'Tarea añadida correctamente'
+            'res' => 'Tarea añadida correctamente'
         ]);
     }
 
     private function validarCategorias($categorias)
     {
-        $message = '';
-        $res = true;
+        $mensaje = '';
+        $ok = true;
 
         foreach ($categorias as $categoriaId) {
             if (!Categoria::find($categoriaId)) {
-                $res = false;
-                $message .= ($message ? '' : 'Categorías no existentes: ') . ($message ? ', ' : '') . $categoriaId;
+                $ok = false;
+                $mensaje .= ($mensaje ? '' : 'Categorías no existentes: ') . ($mensaje ? ', ' : '') . $categoriaId;
             }
         }
 
-        return compact('res', 'message');
+        return compact('mensaje', 'ok');
     }
 
     /**
@@ -119,7 +109,7 @@ class TareasController extends Controller
         $tarea->delete();
 
         return response()->json([
-            'message' => 'Tarea eliminada correctamente'
+            'res' => 'Tarea eliminada correctamente'
         ]);
     }
 }
